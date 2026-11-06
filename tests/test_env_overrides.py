@@ -137,3 +137,30 @@ def test_unknown_env_var_is_ignored(monkeypatch):
         TRADINGAGENTS_NONEXISTENT_KEY="oops",
     )
     assert "nonexistent_key" not in config
+
+
+def test_parallel_openings_and_tier_efforts_are_off_by_default(monkeypatch):
+    config = _config_with_env(monkeypatch)
+    assert config["debate_parallel_first_round"] is False
+    assert config["risk_parallel_first_round"] is False
+    assert config["quick_think_reasoning_effort"] is None
+    assert config["deep_think_reasoning_effort"] is None
+
+
+def test_parallel_openings_and_tier_efforts_from_the_environment(monkeypatch):
+    config = _config_with_env(
+        monkeypatch,
+        TRADINGAGENTS_DEBATE_PARALLEL_FIRST_ROUND="true",
+        TRADINGAGENTS_RISK_PARALLEL_FIRST_ROUND="1",
+        TRADINGAGENTS_QUICK_THINK_REASONING_EFFORT="low",
+        TRADINGAGENTS_DEEP_THINK_REASONING_EFFORT="high",
+    )
+    assert config["debate_parallel_first_round"] is True
+    assert config["risk_parallel_first_round"] is True
+    assert config["quick_think_reasoning_effort"] == "low"
+    assert config["deep_think_reasoning_effort"] == "high"
+
+
+def test_an_empty_parallel_opening_value_keeps_it_off(monkeypatch):
+    config = _config_with_env(monkeypatch, TRADINGAGENTS_RISK_PARALLEL_FIRST_ROUND="")
+    assert config["risk_parallel_first_round"] is False

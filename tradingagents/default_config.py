@@ -19,6 +19,8 @@ _ENV_OVERRIDES = {
     "TRADINGAGENTS_OUTPUT_LANGUAGE":      "output_language",
     "TRADINGAGENTS_MAX_DEBATE_ROUNDS":    "max_debate_rounds",
     "TRADINGAGENTS_MAX_RISK_ROUNDS":      "max_risk_discuss_rounds",
+    "TRADINGAGENTS_DEBATE_PARALLEL_FIRST_ROUND": "debate_parallel_first_round",
+    "TRADINGAGENTS_RISK_PARALLEL_FIRST_ROUND":   "risk_parallel_first_round",
     "TRADINGAGENTS_MAX_TOOL_ROUNDS":      "max_tool_rounds",
     "TRADINGAGENTS_CHECKPOINT_ENABLED":   "checkpoint_enabled",
     "TRADINGAGENTS_BENCHMARK_TICKER":     "benchmark_ticker",
@@ -30,6 +32,9 @@ _ENV_OVERRIDES = {
     # interactive choice, which is skipped when the matching var is set.
     "TRADINGAGENTS_GOOGLE_THINKING_LEVEL":   "google_thinking_level",
     "TRADINGAGENTS_OPENAI_REASONING_EFFORT": "openai_reasoning_effort",
+    # Per tier; unset falls back to TRADINGAGENTS_OPENAI_REASONING_EFFORT.
+    "TRADINGAGENTS_QUICK_THINK_REASONING_EFFORT": "quick_think_reasoning_effort",
+    "TRADINGAGENTS_DEEP_THINK_REASONING_EFFORT":  "deep_think_reasoning_effort",
     "TRADINGAGENTS_ANTHROPIC_EFFORT":        "anthropic_effort",
 }
 
@@ -108,6 +113,10 @@ def build_default_config() -> dict:
         # Provider-specific thinking configuration
         "google_thinking_level": None,      # "high", "minimal", etc.
         "openai_reasoning_effort": None,    # "medium", "high", "low"
+        # The same knob per tier (quick: analysts, researchers, debaters, trader;
+        # deep: the managers). None falls back to openai_reasoning_effort.
+        "quick_think_reasoning_effort": None,
+        "deep_think_reasoning_effort": None,
         "anthropic_effort": None,           # "high", "medium", "low"
         # Sampling temperature, forwarded to every provider when set. None leaves
         # each provider at its own default. Lower values reduce run-to-run
@@ -132,6 +141,11 @@ def build_default_config() -> dict:
         # Debate and discussion settings
         "max_debate_rounds": 1,
         "max_risk_discuss_rounds": 1,
+        # The first round's speakers open at the same time instead of in turn:
+        # fewer serial model calls, but round one's second and third speakers no
+        # longer rebut the ones before them (graph/opening.py).
+        "debate_parallel_first_round": False,
+        "risk_parallel_first_round": False,
         "max_recur_limit": 100,
         # Rounds of tool calls an analyst may make before it is asked for its report.
         "max_tool_rounds": 20,

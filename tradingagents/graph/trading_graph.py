@@ -98,6 +98,8 @@ class TradingAgentsGraph:
             self.deep_thinking_llm,
             self.conditional_logic,
             max_tool_rounds,
+            debate_parallel_first_round=bool(self.config.get("debate_parallel_first_round", False)),
+            risk_parallel_first_round=bool(self.config.get("risk_parallel_first_round", False)),
         )
 
         self.propagator = Propagator(

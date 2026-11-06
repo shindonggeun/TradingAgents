@@ -25,6 +25,7 @@ from tradingagents.agents.state import AgentState
 
 from .analyst_execution import build_analyst_execution_plan
 from .conditional_logic import ConditionalLogic
+from .opening import create_debate_opening, create_risk_opening
 
 logger = logging.getLogger(__name__)
 
@@ -99,12 +100,22 @@ class GraphSetup:
         deep_thinking_llm: Any,
         conditional_logic: ConditionalLogic,
         max_tool_rounds: int,
+        *,
+        debate_parallel_first_round: bool = False,
+        risk_parallel_first_round: bool = False,
     ):
-        """Initialize with required components."""
+        """Initialize with required components.
+
+        ``debate_parallel_first_round`` / ``risk_parallel_first_round``: the
+        first round's speakers open at the same time instead of in turn (see
+        ``opening.py``); later rounds stay serial.
+        """
         self.quick_thinking_llm = quick_thinking_llm
         self.deep_thinking_llm = deep_thinking_llm
         self.conditional_logic = conditional_logic
         self.max_tool_rounds = max_tool_rounds
+        self.debate_parallel_first_round = debate_parallel_first_round
+        self.risk_parallel_first_round = risk_parallel_first_round
 
     def setup_graph(
         self, selected_analysts=("market", "social", "news", "fundamentals"), memory_node=None
@@ -163,7 +174,16 @@ class GraphSetup:
             first_steps.append("Memory Log")
         for node in first_steps:
             workflow.add_edge(START, node)
-        workflow.add_edge(first_steps, "Bull Researcher")
+        if self.debate_parallel_first_round:
+            workflow.add_node("Debate Opening", create_debate_opening(bull_researcher_node, bear_researcher_node))
+            workflow.add_edge(first_steps, "Debate Opening")
+            workflow.add_conditional_edges(
+                "Debate Opening",
+                self.conditional_logic.should_continue_debate,
+                DEBATE_PATH_MAP,
+            )
+        else:
+            workflow.add_edge(first_steps, "Bull Researcher")
 
         # Both research-debate edges share the complete DEBATE_PATH_MAP (#1088).
         for debate_node in ("Bull Researcher", "Bear Researcher"):
@@ -173,7 +193,17 @@ class GraphSetup:
                 DEBATE_PATH_MAP,
             )
         workflow.add_edge("Research Manager", "Trader")
-        workflow.add_edge("Trader", "Aggressive Analyst")
+        if self.risk_parallel_first_round:
+            workflow.add_node("Risk Opening",
+                              create_risk_opening(aggressive_analyst, conservative_analyst, neutral_analyst))
+            workflow.add_edge("Trader", "Risk Opening")
+            workflow.add_conditional_edges(
+                "Risk Opening",
+                self.conditional_logic.should_continue_risk_analysis,
+                RISK_ANALYSIS_PATH_MAP,
+            )
+        else:
+            workflow.add_edge("Trader", "Aggressive Analyst")
         # All three risk edges share the complete RISK_ANALYSIS_PATH_MAP (#1088).
         for risk_node in ("Aggressive Analyst", "Conservative Analyst", "Neutral Analyst"):
             workflow.add_conditional_edges(
