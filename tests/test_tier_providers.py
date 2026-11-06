@@ -88,3 +88,27 @@ def test_the_tier_settings_are_read_from_the_environment(monkeypatch):
     assert config["deep_think_provider"] == "anthropic"
     assert config["quick_think_backend_url"] == "http://localhost:8000/v1"
     assert config["quick_think_provider"] is None
+
+
+@pytest.mark.unit
+def test_each_tier_may_have_its_own_reasoning_effort(monkeypatch):
+    made = _captured(monkeypatch)
+    config = _config(quick_think_reasoning_effort="low", deep_think_reasoning_effort="high",
+                     openai_reasoning_effort="medium")
+
+    factory.create_tier_client(config, "quick")
+    factory.create_tier_client(config, "deep")
+
+    assert [m[3]["reasoning_effort"] for m in made] == ["low", "high"]
+
+
+@pytest.mark.unit
+def test_a_tier_without_its_own_reasoning_effort_uses_the_shared_one(monkeypatch):
+    made = _captured(monkeypatch)
+    config = _config(quick_think_reasoning_effort="low", openai_reasoning_effort="medium")
+
+    factory.create_tier_client(config, "quick")
+    factory.create_tier_client(config, "deep")
+    factory.create_tier_client(_config(openai_reasoning_effort=None), "deep")
+
+    assert [m[3].get("reasoning_effort") for m in made] == ["low", "medium", None]
